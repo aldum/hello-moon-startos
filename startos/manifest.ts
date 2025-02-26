@@ -40,7 +40,7 @@ export const manifest = setupManifest({
     'hello-world': {
       description: 'A moon needs a world',
       optional: true,
-      s9pk: '../hello-world-startos/hello-world.s9pk',
+      s9pk: 'https://github.com/aldum/hello-world-startos/releases/download/v0.0.1/hello-world.s9pk',
     },
   },
 })
