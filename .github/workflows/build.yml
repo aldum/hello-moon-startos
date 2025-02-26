@@ -54,14 +54,6 @@ jobs:
           echo "package_title=$TITLE" | tee -a $GITHUB_ENV $GITHUB_OUTPUT
         shell: bash
 
-      - name: Build container image
-        id: build
-        if: env.cbuild == 'true'
-        continue-on-error: true
-        run: |
-          docker buildx build . -f Dockerfile -t start9/${{ env.package_id }} --platform=linux/amd64 --build-arg ARCH=x86_64
-          docker buildx build . -f Dockerfile -t start9/${{ env.package_id }} --platform=linux/arm64 --build-arg ARCH=aarch64
-
       - name: Cache Docker layers
         uses: actions/cache@v4
         if: env.cbuild == 'true'
@@ -70,6 +62,19 @@ jobs:
           key: ${{ runner.os }}-single-buildx-${{ hashFiles(env.cfile) }}
           restore-keys: |
             ${{ runner.os }}-single-buildx
+
+      - name: Build container images
+        id: build-images
+        if: env.cbuild == 'true'
+        continue-on-error: true
+        run: |
+          docker buildx build . -f Dockerfile -t start9/${{ env.package_id }} --platform=linux/amd64 --build-arg ARCH=x86_64
+          docker buildx build . -f Dockerfile -t start9/${{ env.package_id }} --platform=linux/arm64 --build-arg ARCH=aarch64
+
+      - name: Build s9pk
+        id: build
+        run: |
+          make
 
       - name: Upload .s9pk
         uses: actions/upload-artifact@v4
