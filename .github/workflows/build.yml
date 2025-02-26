@@ -22,10 +22,24 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Detect containerfile
+        id: containerfile
+        run: |
+          CFILE=''
+          [ -f Dockerfile ] && {
+            CFILE='Dockerfile'
+          }
+          [ -f Containerfile ] && {
+            CFILE='Containerfile'
+          }
+          [ -n "$CFILE" ] && {
+            CFHASH="$(md5sum $CFILE | cut -d' ' -f1)"
+            echo "cbuild=true" >> $GITHUB_ENV
+            echo "cfile=$CFILE" >> $GITHUB_ENV
+          }
       - name: Setup service package
         id: setup-build
         run: |
-          git submodule update --init --recursive
           start-cli init
           npm i
           npm run build
@@ -42,6 +56,7 @@ jobs:
 
       - name: Build container image
         id: build
+        if: env.cbuild == 'true'
         continue-on-error: true
         run: |
           docker buildx build . -f Dockerfile -t start9/${{ env.package_id }} --platform=linux/amd64 --build-arg ARCH=x86_64
@@ -49,22 +64,12 @@ jobs:
 
       - name: Cache Docker layers
         uses: actions/cache@v4
+        if: env.cbuild == 'true'
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-single-buildx-${{ github.sha }}
+          path: /var/lib/docker
+          key: ${{ runner.os }}-single-buildx-${{ hashFiles(env.cfile) }}
           restore-keys: |
             ${{ runner.os }}-single-buildx
-
-      - name: List
-        id: list
-        continue-on-error: true
-        run: |
-          sudo ls -lRa /var/lib/docker
-          echo '----------------------------------'
-          sudo ls -lRa /tmp
-          echo '----------------------------------'
-          sudo ls -lRa /
-          echo
 
       - name: Upload .s9pk
         uses: actions/upload-artifact@v4
